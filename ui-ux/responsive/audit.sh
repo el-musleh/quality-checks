@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Responsive Design Audit
-# Checks breakpoint consistency, viewport meta, and overflow patterns.
+# Checks breakpoint consistency, viewport meta, overflow patterns, overlay positioning, and click-outside handling.
 # Portable — configure via config.conf.
 #
 # Usage: ./quality-checks/ui-ux/responsive/audit.sh [scan-dir]
@@ -13,12 +13,22 @@ CONF_FILE="$SCRIPT_DIR/config.conf"
 
 SCAN_DIR="."; FILE_TYPES="svelte,vue,jsx,tsx,html,css,scss,less"
 EXPECTED_BREAKPOINTS="480,580,600,640,768,900,1024,1280"
+MIN_TOUCH_TARGET_MOBILE=44
+CHECK_OVERLAY_MOBILE=true
+CHECK_CLICK_OUTSIDE=true
 
 if [ -f "$CONF_FILE" ]; then
   while IFS='=' read -r key val; do
     [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
     key=$(echo "$key" | xargs); val=$(echo "$val" | xargs)
-    case "$key" in SCAN_DIR) SCAN_DIR="$val" ;; FILE_TYPES) FILE_TYPES="$val" ;; EXPECTED_BREAKPOINTS) EXPECTED_BREAKPOINTS="$val" ;; esac
+    case "$key" in 
+      SCAN_DIR) SCAN_DIR="$val" ;; 
+      FILE_TYPES) FILE_TYPES="$val" ;; 
+      EXPECTED_BREAKPOINTS) EXPECTED_BREAKPOINTS="$val" ;;
+      MIN_TOUCH_TARGET_MOBILE) MIN_TOUCH_TARGET_MOBILE="$val" ;;
+      CHECK_OVERLAY_MOBILE) CHECK_OVERLAY_MOBILE="$val" ;;
+      CHECK_CLICK_OUTSIDE) CHECK_CLICK_OUTSIDE="$val" ;;
+    esac
   done < "$CONF_FILE"
 fi
 
@@ -156,6 +166,95 @@ if [ -n "$VW_RESULTS" ]; then
 else
   echo -e "  ${GREEN}No 100vw usage found.${NC}"
 fi
+echo ""
+
+# ── 6: Overlay mobile positioning ──
+if [ "$CHECK_OVERLAY_MOBILE" = "true" ]; then
+echo -e "${BOLD}6. Overlay mobile positioning (fixed/absolute elements need mobile styles)${NC}"
+echo "────────────────────────────────────────────────────────"
+OVERLAY_ISSUES=0
+# Find all fixed/absolute positioned elements
+OVERLAYS=$(grep -rn -E 'position:\s*(fixed|absolute)' "$SCAN_PATH" "${INCLUDE_FLAGS[@]}" "${EXCLUDE_FLAGS[@]}" 2>/dev/null || true)
+if [ -n "$OVERLAYS" ]; then
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    file=$(echo "$line" | sed "s|$PROJECT_ROOT/||" | cut -d: -f1)
+    lineno=$(echo "$line" | cut -d: -f2)
+    
+    # Check if there's a corresponding @media query for this element (basic check)
+    # Look for any @media rules in the same file
+    file_path="$PROJECT_ROOT/$file"
+    if [ -f "$file_path" ]; then
+      has_media_query=$(grep -c '@media' "$file_path" 2>/dev/null | head -1 | awk '{print $1}' || echo "0")
+      if [ -n "$has_media_query" ] && [ "$has_media_query" -eq 0 ]; then
+        echo -e "  ${YELLOW}WARNING${NC} $file:$lineno — fixed/absolute element without any media queries"
+        OVERLAY_ISSUES=$((OVERLAY_ISSUES + 1))
+      fi
+    fi
+  done <<< "$OVERLAYS"
+fi
+if [ "$OVERLAY_ISSUES" -eq 0 ]; then
+  echo -e "  ${GREEN}All overlays have mobile positioning or media queries.${NC}"
+fi
+TOTAL_ISSUES=$((TOTAL_ISSUES + OVERLAY_ISSUES))
+echo ""
+fi
+
+# ── 7: Click outside handler ──
+if [ "$CHECK_CLICK_OUTSIDE" = "true" ]; then
+echo -e "${BOLD}7. Click outside handler for dialogs/modals${NC}"
+echo "────────────────────────────────────────────────────────"
+CLICK_OUTSIDE_ISSUES=0
+# Find elements with role="dialog" or class containing "modal" or "overlay"
+DIALOG_ELEMENTS=$(grep -rn -E 'role="dialog"|class=".*modal|class=".*overlay|class=".*dropdown' "$SCAN_PATH" "${INCLUDE_FLAGS[@]}" "${EXCLUDE_FLAGS[@]}" 2>/dev/null || true)
+if [ -n "$DIALOG_ELEMENTS" ]; then
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    file=$(echo "$line" | sed "s|$PROJECT_ROOT/||" | cut -d: -f1)
+    lineno=$(echo "$line" | cut -d: -f2)
+    
+    # Check if there's a click handler in the same file that checks for outside clicks
+    # Look for patterns like closest(), click-outside, on:click with stopPropagation or handleWindowClick
+    file_path="$PROJECT_ROOT/$file"
+    if [ -f "$file_path" ]; then
+      has_click_outside=$(grep -cE 'closest\(|click-outside|handleWindowClick|stopPropagation.*click' "$file_path" 2>/dev/null | head -1 | awk '{print $1}' || echo "0")
+      if [ -n "$has_click_outside" ] && [ "$has_click_outside" -eq 0 ]; then
+        echo -e "  ${YELLOW}WARNING${NC} $file:$lineno — dialog/overlay without click-outside handler"
+        CLICK_OUTSIDE_ISSUES=$((CLICK_OUTSIDE_ISSUES + 1))
+      fi
+    fi
+  done <<< "$DIALOG_ELEMENTS"
+fi
+if [ "$CLICK_OUTSIDE_ISSUES" -eq 0 ]; then
+  echo -e "  ${GREEN}All dialogs/overlays have click-outside handlers.${NC}"
+fi
+TOTAL_ISSUES=$((TOTAL_ISSUES + CLICK_OUTSIDE_ISSUES))
+echo ""
+fi
+
+# ── 8: Mobile touch targets ──
+echo -e "${BOLD}8. Mobile touch targets (min ${MIN_TOUCH_TARGET_MOBILE}px)${NC}"
+echo "────────────────────────────────────────────────────────"
+TOUCH_ISSUES=0
+# Find all height/width declarations in media queries for mobile
+MOBILE_STYLES=$(grep -rn -B2 -A2 '@media.*max-width:\s*(480|580|600)' "$SCAN_PATH" "${INCLUDE_FLAGS[@]}" "${EXCLUDE_FLAGS[@]}" 2>/dev/null || true)
+if [ -n "$MOBILE_STYLES" ]; then
+  # Look for small height/width values in mobile media queries
+  SMALL_TARGETS=$(echo "$MOBILE_STYLES" | grep -E 'height:\s*[0-9]+(px)?' | grep -vE 'height:\s*([5-9][0-9]|[1-9][0-9]{2,})' || true)
+  if [ -n "$SMALL_TARGETS" ]; then
+    while IFS= read -r line; do
+      [ -z "$line" ] && continue
+      file=$(echo "$line" | sed "s|$PROJECT_ROOT/||" | cut -d: -f1)
+      lineno=$(echo "$line" | cut -d: -f2)
+      echo -e "  ${YELLOW}WARNING${NC} $file:$lineno — potentially small touch target in mobile view"
+      TOUCH_ISSUES=$((TOUCH_ISSUES + 1))
+    done <<< "$SMALL_TARGETS"
+  fi
+fi
+if [ "$TOUCH_ISSUES" -eq 0 ]; then
+  echo -e "  ${GREEN}No obviously small touch targets in mobile views.${NC}"
+fi
+TOTAL_ISSUES=$((TOTAL_ISSUES + TOUCH_ISSUES))
 echo ""
 
 echo -e "${BOLD}Summary:${NC} $TOTAL_ISSUES issue(s)."

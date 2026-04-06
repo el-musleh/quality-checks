@@ -14,6 +14,8 @@
 | `<input>` without `id`+`<label>` or `aria-label` | Warning | Form field not associated with a label |
 | Click handlers on non-interactive elements | Warning | `on:click` on `<div>`/`<span>` without `role` and `tabindex` |
 | Missing `role` on interactive custom elements | Warning | Custom widgets need explicit ARIA roles |
+| Raster images (`.png`/`.jpg`) in buttons/links | Warning | Raster images don't scale well. Use vector SVGs or FontAwesome. |
+| Emojis in buttons/links | Warning | Emojis are font-dependent and shouldn't be used as structural UI icons. |
 
 ---
 
@@ -27,6 +29,7 @@
 - [ ] All buttons and links are labeled
 - [ ] All form inputs have associated labels
 - [ ] Interactive non-button/link elements have `role` and `tabindex`
+- [ ] UI controls use Vector SVGs or icon fonts, not raster images or emojis
 
 ---
 

@@ -112,20 +112,63 @@ else
 fi
 echo ""
 
-# ── Check 4: Click handlers on non-interactive elements ──
-echo -e "${BOLD}4. Click handlers on non-interactive elements without role/tabindex${NC}"
+# ── Check 4: Click/Key handlers on non-interactive elements ──
+echo -e "${BOLD}4. Interaction handlers on non-interactive elements without role/tabindex${NC}"
 echo "────────────────────────────────────────────────────────"
-# Svelte: on:click on div/span; React: onClick on div/span
-RESULTS=$(grep -rn -E '(<div|<span)[^>]*(on:click|onClick)' "$SCAN_PATH" "${INCLUDE_FLAGS[@]}" "${EXCLUDE_FLAGS[@]}" 2>/dev/null | grep -v 'role=' || true)
+# Svelte: on:click, on:keydown; React: onClick, onKeyDown on div/span/section/article
+INTERACTION_EVENTS="on:click|onClick|on:keydown|onKeyDown|on:keypress|onKeyPress|on:keyup|onKeyUp"
+RESULTS=$(grep -rn -E "(<div|<span|<section|<article)[^>]*(${INTERACTION_EVENTS})" "$SCAN_PATH" "${INCLUDE_FLAGS[@]}" "${EXCLUDE_FLAGS[@]}" 2>/dev/null || true)
+
 if [ -n "$RESULTS" ]; then
   echo "$RESULTS" | while IFS= read -r line; do
     file=$(echo "$line" | sed "s|$PROJECT_ROOT/||" | cut -d: -f1)
     lineno=$(echo "$line" | cut -d: -f2)
-    echo -e "  ${YELLOW}WARNING${NC} $file:$lineno — click handler on <div>/<span> without role attribute"
+    content=$(echo "$line" | cut -d: -f3-)
+    
+    if ! echo "$content" | grep -q 'role='; then
+      echo -e "  ${RED}ERROR${NC} $file:$lineno — missing ${CYAN}role${NC} attribute on element with interaction"
+      ISSUES=$((ISSUES + 1))
+    elif ! echo "$content" | grep -q 'tabindex='; then
+      echo -e "  ${YELLOW}WARNING${NC} $file:$lineno — missing ${CYAN}tabindex${NC} on element with role"
+      ISSUES=$((ISSUES + 1))
+    else
+      echo -e "  ${DIM}INFO${NC} $file:$lineno — consider using ${CYAN}<button>${NC} instead of interactive <div>/<span>"
+    fi
+  done
+else
+  echo -e "  ${GREEN}No interaction handlers on non-interactive elements.${NC}"
+fi
+echo ""
+
+# ── 5: Raster images in interactive elements ──
+echo -e "${BOLD}5. Raster images (.png, .jpg) in buttons or links${NC}"
+echo "────────────────────────────────────────────────────────"
+RESULTS=$(grep -rn -E '<(button|a)[^>]*>.*<img[^>]*src=".*\.(png|jpe?g|webp)"' "$SCAN_PATH" "${INCLUDE_FLAGS[@]}" "${EXCLUDE_FLAGS[@]}" 2>/dev/null || true)
+if [ -n "$RESULTS" ]; then
+  echo "$RESULTS" | while IFS= read -r line; do
+    file=$(echo "$line" | sed "s|$PROJECT_ROOT/||" | cut -d: -f1)
+    lineno=$(echo "$line" | cut -d: -f2)
+    echo -e "  ${YELLOW}WARNING${NC} $file:$lineno — raster image found in interactive element. Use Vector (SVG) icons."
   done
   ISSUES=$((ISSUES + $(echo "$RESULTS" | wc -l)))
 else
-  echo -e "  ${GREEN}No click handlers on non-interactive elements missing role.${NC}"
+  echo -e "  ${GREEN}No raster images found in interactive elements.${NC}"
+fi
+echo ""
+
+# ── 6: Emojis used as structural UI icons ──
+echo -e "${BOLD}6. Emojis in buttons or links (Heuristic)${NC}"
+echo "────────────────────────────────────────────────────────"
+RESULTS=$(grep -rn -P '<(button|a)[^>]*>.*[\x{1F300}-\x{1F64F}\x{1F680}-\x{1F6FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}]' "$SCAN_PATH" "${INCLUDE_FLAGS[@]}" "${EXCLUDE_FLAGS[@]}" 2>/dev/null || true)
+if [ -n "$RESULTS" ]; then
+  echo "$RESULTS" | while IFS= read -r line; do
+    file=$(echo "$line" | sed "s|$PROJECT_ROOT/||" | cut -d: -f1)
+    lineno=$(echo "$line" | cut -d: -f2)
+    echo -e "  ${YELLOW}WARNING${NC} $file:$lineno — emoji found in button or link. Use proper vector icons instead."
+  done
+  ISSUES=$((ISSUES + $(echo "$RESULTS" | wc -l)))
+else
+  echo -e "  ${GREEN}No emojis found in interactive elements.${NC}"
 fi
 echo ""
 

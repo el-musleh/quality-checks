@@ -17,7 +17,7 @@ Every `z-index` in the project must fit one of these layers. Edit `zindex.conf` 
 | **Sticky sub-bars** | `99` | Filter bars, chip-bars, toolbars that stick below the header |
 | **Header** | `1000` | The main site header and its dropdown menu |
 | **Dropdowns / popovers** | `2000` | Sort menus, action menus, popover panels |
-| **Confirmation modals** | `9999` | Blocking confirmation dialogs — above everything except loading |
+| **Confirmation modals & Toasts** | `9999` | Blocking confirmation dialogs, global Toast notifications — above everything except loading |
 | **Loading overlay** | `10000` | Full-screen loading spinner — absolute top layer |
 
 ---

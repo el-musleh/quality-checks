@@ -1,26 +1,22 @@
 # Code Review Quality Checks
 
-Placeholder for automated code review audits.
+Automated audits for code health, technical debt, and compiler diagnostics.
 
-## Planned Checks
+## Available Checks
 
-| Check | Status | What it will do |
-|---|---|---|
-| `lint-warnings/` | Planned | Capture and summarize linter warnings across the codebase |
-| `todo-fixme/` | Planned | Find and report all TODO/FIXME/HACK comments |
-| `dead-code/` | Planned | Detect unused exports, unreachable branches, and orphaned files |
-| `dependency-audit/` | Planned | Flag outdated, deprecated, or vulnerable dependencies |
+| Check | What it does |
+|---|---|
+| [`lint-warnings/`](lint-warnings/) | Captures and summarizes compiler/linter warnings (e.g., Svelte a11y, unused CSS) |
+| [`todo-fixme/`](todo-fixme/) | Finds and reports all TODO, FIXME, HACK, and BUG comments |
+| `dead-code/` | Planned |
+| `dependency-audit/` | Planned |
 
-## Adding a New Check
+## Run All Code Review Checks
 
-Create a folder with the standard structure:
+```bash
+# Run a specific check
+./quality-checks/code-review/lint-warnings/audit.sh
 
+# Or run everything in this topic
+./quality-checks/run-all.sh code-review
 ```
-code-review/
-└── your-check/
-    ├── README.md      # What it checks, checklist, customization
-    ├── config.conf    # Key=value settings (optional)
-    └── audit.sh       # The scanner script (must be executable)
-```
-
-The `run-all.sh` script at the root auto-discovers every `audit.sh`.
