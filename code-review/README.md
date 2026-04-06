@@ -8,6 +8,8 @@ Automated audits for code health, technical debt, and compiler diagnostics.
 |---|---|
 | [`lint-warnings/`](lint-warnings/) | Captures and summarizes compiler/linter warnings (e.g., Svelte a11y, unused CSS) |
 | [`todo-fixme/`](todo-fixme/) | Finds and reports all TODO, FIXME, HACK, and BUG comments |
+| [`browser-storage/`](browser-storage/) | Flags usage of browser.storage.local to encourage sync storage for preferences |
+| [`secrets/`](secrets/) | Finds hardcoded API keys and secrets that should be obfuscated or extracted |
 | `dead-code/` | Planned |
 | `dependency-audit/` | Planned |
 

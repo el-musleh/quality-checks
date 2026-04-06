@@ -23,7 +23,13 @@ quality-checks/
 │   └── semantic-html/          ← heading hierarchy, landmarks (WCAG 1.3.1, 2.4.6)
 ├── performance/                ← build and runtime performance checks
 │   └── bundle-size/            ← file size thresholds for build output
-└── code-review/                ← code quality checks (planned)
+├── code-review/                ← code quality checks (planned)
+│   ├── browser-storage/        ← encourages browser.storage.sync usage
+│   ├── lint-warnings/          ← summarizes compiler warnings
+│   ├── deprecated-deps/        ← flags deprecated/vulnerable npm dependencies
+│   ├── format-string/          ← detects format string injection in console.log calls
+│   ├── secrets/                ← finds hardcoded API keys and secrets
+│   └── todo-fixme/             ← flags unresolved TODO/FIXME comments
 ```
 
 Each check folder follows a standard convention:
@@ -47,6 +53,9 @@ Run the relevant audit(s) in these situations:
 | **Adding clickable divs or heading elements** | `ui-ux/semantic-html/audit.sh` |
 | **Adding media queries or responsive styles** | `ui-ux/responsive/audit.sh` |
 | **Adding new dependencies or significant code** | `performance/bundle-size/audit.sh` |
+| **Adding, removing, or updating npm dependencies** | `code-review/deprecated-deps/audit.sh` |
+| **Adding API integrations or external services** | `code-review/secrets/audit.sh` |
+| **Adding or modifying `console.log/warn/error` calls** | `code-review/format-string/audit.sh` |
 | **Before a release or major PR** | `run-all.sh` (runs everything) |
 
 ---
